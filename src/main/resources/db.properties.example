@@ -1,0 +1,11 @@
+# ------------------------------------------------------------------
+# 数据库配置模板
+# 用法：复制本文件为同目录下的 db.properties，按本机环境修改后使用。
+#       db.properties 已被 .gitignore 排除，不会提交到仓库。
+# 优先级：环境变量 > db.properties > 本模板默认值
+#   环境变量：HQ_DB_URL / HQ_DB_USER / HQ_DB_PASSWORD
+# ------------------------------------------------------------------
+db.driver=com.mysql.cj.jdbc.Driver
+db.url=jdbc:mysql://localhost:3306/hospital_queue?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+db.user=root
+db.password=123456

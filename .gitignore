@@ -1,0 +1,57 @@
+# ---- 构建产物（源码提交，产物不提交）----
+target/
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+
+# ---- 日志与临时文件 ----
+logs/
+*.log
+*.log.*
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# ---- 本地配置与密钥（切勿提交）----
+src/main/resources/db.properties
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets.*
+credentials.*
+
+# ---- 编辑器 / IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+!.vscode/extensions.json
+.classpath
+.project
+.settings/
+*.launch
+
+# ---- 操作系统 ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# ---- 其它 ----
+*.zip
+!.gitkeep
