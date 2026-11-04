@@ -80,7 +80,12 @@ public class AuthServiceImpl implements AuthService {
                         + LOCK_MINUTES + " 分钟，可联系管理员解锁。");
             }
             AppLogger.warn("登录失败：" + name + "（第 " + attempts + " 次）");
-            throw new AuthException("用户名或密码错误，还可尝试 " + (MAX_FAILED_ATTEMPTS - attempts) + " 次。");
+            int remaining = MAX_FAILED_ATTEMPTS - attempts;
+            if (remaining == 1) {
+                throw new AuthException("用户名或密码错误，还剩 1 次机会，再输错一次账号将被锁定 "
+                        + LOCK_MINUTES + " 分钟。");
+            }
+            throw new AuthException("用户名或密码错误，还剩 " + remaining + " 次机会。");
         }
 
         userDao.resetFailedAttempts(name);
