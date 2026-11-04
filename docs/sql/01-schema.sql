@@ -133,6 +133,8 @@ CREATE TABLE sys_user (
     ref_id        BIGINT      NULL COMMENT '患者 id 或医生 id，管理员为空',
     real_name     VARCHAR(50) NOT NULL COMMENT '真实姓名',
     enabled       TINYINT     NOT NULL DEFAULT 1 COMMENT '1=启用 0=禁用',
+    failed_attempts INT       NOT NULL DEFAULT 0 COMMENT '连续登录失败次数',
+    locked_until  DATETIME    NULL COMMENT '锁定截止时间，NULL 表示未锁定',
     PRIMARY KEY (id),
     UNIQUE KEY uk_user_username (username)
 ) ENGINE = InnoDB COMMENT '系统用户';

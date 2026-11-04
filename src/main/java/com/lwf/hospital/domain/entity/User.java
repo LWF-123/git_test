@@ -2,8 +2,10 @@ package com.lwf.hospital.domain.entity;
 
 import com.lwf.hospital.domain.enums.RoleType;
 
+import java.time.LocalDateTime;
+
 /**
- * 系统用户（登录凭据 + 角色 + 业务主体引用）。
+ * 系统用户（登录凭据 + 角色 + 业务主体引用 + 登录风控状态）。
  *
  * @author LWF-123
  * @since 1.0.0
@@ -18,6 +20,8 @@ public class User {
     private Long refId;
     private String realName;
     private boolean enabled;
+    private int failedAttempts;
+    private LocalDateTime lockedUntil;
 
     public Long getId() {
         return id;
@@ -81,6 +85,31 @@ public class User {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public int getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public void setFailedAttempts(int failedAttempts) {
+        this.failedAttempts = failedAttempts;
+    }
+
+    public LocalDateTime getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(LocalDateTime lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
+    /**
+     * 当前是否仍处于锁定状态。
+     *
+     * @return 锁定未到期返回 true
+     */
+    public boolean isLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(LocalDateTime.now());
     }
 
     @Override
