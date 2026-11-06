@@ -31,6 +31,7 @@ CREATE TABLE doctor (
     name          VARCHAR(50) NOT NULL COMMENT '姓名',
     title         VARCHAR(30) NOT NULL DEFAULT '医师' COMMENT '职称',
     department_id BIGINT      NOT NULL COMMENT '所属科室',
+    enabled       TINYINT     NOT NULL DEFAULT 1 COMMENT '1=在职 0=停用',
     PRIMARY KEY (id),
     UNIQUE KEY uk_doctor_no (doctor_no),
     KEY idx_doctor_dept (department_id),

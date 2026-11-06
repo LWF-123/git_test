@@ -54,7 +54,7 @@ public class ScheduleDaoImpl implements ScheduleDao {
     public List<Doctor> findDoctorsByDepartment(long departmentId) {
         return jdbc.query("""
                         SELECT id, doctor_no, name, title, department_id
-                        FROM doctor WHERE department_id = ? ORDER BY doctor_no
+                        FROM doctor WHERE department_id = ? AND enabled = 1 ORDER BY doctor_no
                         """,
                 rs -> {
                     Doctor doctor = new Doctor();
@@ -63,8 +63,17 @@ public class ScheduleDaoImpl implements ScheduleDao {
                     doctor.setName(rs.getString("name"));
                     doctor.setTitle(rs.getString("title"));
                     doctor.setDepartmentId(rs.getLong("department_id"));
+                    doctor.setEnabled(true);
                     return doctor;
                 }, departmentId);
+    }
+
+    @Override
+    public int closeFutureSchedules(Connection connection, long doctorId) {
+        return jdbc.update(connection, """
+                        UPDATE doctor_schedule SET status = 'CLOSED'
+                        WHERE doctor_id = ? AND status = 'OPEN' AND work_date >= CURDATE()
+                        """, doctorId);
     }
 
     @Override

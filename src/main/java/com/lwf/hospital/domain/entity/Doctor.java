@@ -13,6 +13,7 @@ public class Doctor {
     private String name;
     private String title;
     private Long departmentId;
+    private boolean enabled = true;
 
     public Long getId() {
         return id;
@@ -52,6 +53,14 @@ public class Doctor {
 
     public void setDepartmentId(Long departmentId) {
         this.departmentId = departmentId;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     @Override

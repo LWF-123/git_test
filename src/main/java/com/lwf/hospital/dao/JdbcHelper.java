@@ -156,6 +156,21 @@ public class JdbcHelper {
     }
 
     /**
+     * 插入并返回自增主键（自动开关连接）。
+     *
+     * @param sql    SQL
+     * @param params 参数
+     * @return 自增主键，取不到时返回 0
+     */
+    public long insert(String sql, Object... params) {
+        try (Connection connection = config.open()) {
+            return insert(connection, sql, params);
+        } catch (SQLException e) {
+            throw new DataAccessException("关闭连接失败", e);
+        }
+    }
+
+    /**
      * 在事务中执行：正常返回提交，抛异常回滚。
      *
      * @param work 工作单元

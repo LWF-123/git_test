@@ -112,7 +112,11 @@ public final class InputUtils {
             if ("n".equalsIgnoreCase(value)) {
                 return false;
             }
-            System.out.println("  请输入 y 或 n。");
+            // 输入 0 或输入流结束（readLine 返回 "0"）都视为取消，避免在 EOF 上空转
+            if ("0".equals(value)) {
+                return false;
+            }
+            System.out.println("  请输入 y 或 n（0 取消）。");
         }
     }
 }

@@ -26,12 +26,21 @@ public interface ScheduleDao {
     List<Department> findDepartments();
 
     /**
-     * 某科室的医生。
+     * 某科室的在职医生。
      *
      * @param departmentId 科室 id
      * @return 医生列表
      */
     List<Doctor> findDoctorsByDepartment(long departmentId);
+
+    /**
+     * 事务内关闭某医生今天及以后的可挂号源（医生停用时联动）。
+     *
+     * @param connection 事务连接
+     * @param doctorId   医生 id
+     * @return 被关闭的排班数量
+     */
+    int closeFutureSchedules(Connection connection, long doctorId);
 
     /**
      * 查询今天及以后仍可挂号的排班。
