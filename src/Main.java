@@ -6,10 +6,13 @@ import entity.User;
 import service.CallService;
 import service.DeptService;
 import service.RegistrationService;
+import service.ReportService;
 import service.ScheduleService;
 import service.UserService;
+
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
@@ -52,6 +55,7 @@ public class Main {
 
     //管理员菜单
     private static void adminMenu(Scanner sc, DeptService deptService, ScheduleService scheduleService){
+        ReportService reportService = new ReportService();
         while(true) {
             System.out.println("\n=====管理员主菜单=====");
             System.out.println("1.科室与医生信息管理");
@@ -63,7 +67,31 @@ public class Main {
             switch (opt) {
                 case 1 -> deptDoctorMenu(sc, deptService);
                 case 2 -> scheduleMenu(sc, scheduleService);
-                case 3 -> System.out.println("【统计报表模块待开发】");
+                case 3 -> {
+                    System.out.println("\n==========【挂号统计报表】==========");
+                    //按日期统计挂号
+                    System.out.print("请输入统计日期(示例：2026-11-04)：");
+                    String date = sc.next();
+                    Map<String,Integer> dateReport = reportService.countByDate(date);
+                    System.out.println("====按日期挂号统计====");
+                    System.out.println("当日总挂号量：" + dateReport.get("total"));
+                    System.out.println("急诊：" + dateReport.get("emergency") + " | 专家：" + dateReport.get("expert") + " | 普通：" + dateReport.get("normal"));
+
+                    //挂号状态统计
+                    Map<String,Integer> statusReport = reportService.countByStatus();
+                    System.out.println("\n====挂号状态分布统计====");
+                    System.out.println("待就诊："+statusReport.get("wait")+" | 正在叫号："+statusReport.get("calling"));
+                    System.out.println("已就诊："+statusReport.get("finish")+" | 已取消："+statusReport.get("cancel"));
+                    System.out.println("已过号："+statusReport.get("miss")+" | 已过期："+statusReport.get("expire"));
+
+                    //号源使用率示例
+                    double rate = reportService.getSourceUsageRate(200, 68);
+                    System.out.printf("\n====号源使用率示例：总号源200，已挂号68，使用率：%.2f %% \n", rate);
+
+                    System.out.println("====================================\n按回车返回管理员菜单...");
+                    sc.nextLine();
+                    sc.nextLine();
+                }
                 case 0 -> {
                     System.out.println("退出系统");
                     return;
