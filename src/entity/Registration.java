@@ -6,9 +6,11 @@ public class Registration {
     //挂号状态枚举，匹配数据库reg_status
     public enum RegStatus {
         WAIT(1,"待就诊"),
-        FINISH(2,"已就诊"),
-        CANCEL(3,"已取消"),
-        EXPIRE(4,"已过期");
+        CALLING(2,"正在接诊"), //新增：叫号中
+        FINISH(3,"已就诊"),
+        CANCEL(4,"已取消"),
+        MISS(5,"已过号"),     //新增：过号
+        EXPIRE(6,"已过期");
 
         private final int code;
         private final String desc;
@@ -21,9 +23,18 @@ public class Registration {
 
     //号别类型：急诊、专家、普通
     public enum RegType{
-        EMERGENCY,  //急诊
-        EXPERT,     //专家
-        NORMAL      //普通
+        EMERGENCY(1,"急诊"),  //急诊
+        EXPERT(2,"专家"),     //专家
+        NORMAL(3,"普通");      //普通
+
+        private final int code;
+        private final String desc;
+        RegType(int code,String desc){
+            this.code = code;
+            this.desc = desc;
+        }
+        public int getCode(){return code;}
+        public String getDesc(){return desc;}
     }
 
     private Integer regId;
@@ -139,5 +150,17 @@ public class Registration {
 
     public void setQueueNo(String queueNo) {
         this.queueNo = queueNo;
+    }
+
+    // ============ 新增：给CallService优先级排序用，解决爆红 ============
+    public int getRegTypePriority() {
+        if (regType == null) {
+            return 99; //未知类型放到队列最后
+        }
+        return switch (regType) {
+            case EMERGENCY -> 1; //急诊优先级最高
+            case EXPERT -> 2;
+            case NORMAL -> 3;
+        };
     }
 }

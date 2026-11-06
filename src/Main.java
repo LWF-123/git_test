@@ -3,6 +3,7 @@ import entity.Doctor;
 import entity.Registration;
 import entity.Schedule;
 import entity.User;
+import service.CallService;
 import service.DeptService;
 import service.RegistrationService;
 import service.ScheduleService;
@@ -18,6 +19,7 @@ public class Main {
         DeptService deptService = new DeptService();
         ScheduleService scheduleService = new ScheduleService();
         RegistrationService registerService = new RegistrationService();
+        CallService callService = new CallService();
 
         System.out.println("===== 门诊挂号系统 =====");
         System.out.print("请输入账号：");
@@ -43,7 +45,7 @@ public class Main {
 
         switch (loginUser.getRole()){
             case ADMIN -> adminMenu(scanner, deptService, scheduleService);
-            case DOCTOR -> doctorMenu(scanner);
+            case DOCTOR -> doctorMenu(scanner, callService, loginUser.getUserId());
             case PATIENT -> patientMenu(scanner, registerService, loginUser.getUserId());
         }
     }
@@ -262,12 +264,74 @@ public class Main {
         }
     }
 
-    //医生菜单
-    private static void doctorMenu(Scanner sc){
-        System.out.println("\n=====医生菜单=====");
-        System.out.println("1.候诊队列与叫号");
-        System.out.println("2.接诊完成/过号");
-        System.out.println("0.退出");
+    //医生诊疗菜单（功能6：叫号、候诊队列、过号、完成接诊）
+    private static void doctorMenu(Scanner sc, CallService callService, Integer doctorId){
+        while(true){
+            System.out.println("\n=====医生诊疗菜单=====");
+            System.out.println("1.查看候诊队列");
+            System.out.println("2.叫下一位患者");
+            System.out.println("3.标记患者过号");
+            System.out.println("4.完成接诊");
+            System.out.println("0.返回上级菜单");
+            System.out.print("请选择：");
+            int opt = sc.nextInt();
+            switch(opt){
+                case 1 -> showWaitQueue(sc, callService, doctorId);
+                case 2 -> callNextPatient(sc, callService, doctorId);
+                case 3 -> missPatient(sc, callService);
+                case 4 -> finishPatient(sc, callService);
+                case 0 -> {return;}
+                default -> System.out.println("无效选项！");
+            }
+        }
+    }
+
+    //查看候诊队列
+    private static void showWaitQueue(Scanner sc, CallService callService, Integer docId){
+        List<Registration> queueList = callService.getWaitQueue(docId);
+        System.out.println("\n====候诊队列（急诊优先排序）====");
+        if(queueList.isEmpty()){
+            System.out.println("暂无候诊患者");
+            return;
+        }
+        for(Registration r : queueList){
+            System.out.printf("排队号:%s | 号别:%s | 挂号ID:%d%n",
+                    r.getQueueNo(), r.getRegType(), r.getRegId());
+        }
+    }
+
+    //叫下一位患者
+    private static void callNextPatient(Scanner sc, CallService callService, Integer docId){
+        Registration reg = callService.callNext(docId);
+        if(reg == null){
+            System.out.println("❌没有待叫号患者");
+        }else{
+            System.out.println("✅正在叫号：排队号 "+ reg.getQueueNo());
+        }
+    }
+
+    //标记患者过号
+    private static void missPatient(Scanner sc, CallService callService){
+        System.out.print("输入挂号ID：");
+        Integer regId = sc.nextInt();
+        boolean res = callService.missNumber(regId);
+        if(res){
+            System.out.println("✅标记过号成功");
+        }else{
+            System.out.println("❌标记失败，状态不允许");
+        }
+    }
+
+    //接诊完成
+    private static void finishPatient(Scanner sc, CallService callService){
+        System.out.print("输入挂号ID：");
+        Integer regId = sc.nextInt();
+        boolean res = callService.finishConsult(regId);
+        if(res){
+            System.out.println("✅接诊完成");
+        }else{
+            System.out.println("❌操作失败");
+        }
     }
 
     //患者菜单
