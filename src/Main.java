@@ -1,10 +1,13 @@
 import entity.Dept;
 import entity.Doctor;
+import entity.Registration;
 import entity.Schedule;
 import entity.User;
 import service.DeptService;
+import service.RegistrationService;
 import service.ScheduleService;
 import service.UserService;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -14,6 +17,7 @@ public class Main {
         UserService userService = new UserService();
         DeptService deptService = new DeptService();
         ScheduleService scheduleService = new ScheduleService();
+        RegistrationService registerService = new RegistrationService();
 
         System.out.println("===== 门诊挂号系统 =====");
         System.out.print("请输入账号：");
@@ -40,7 +44,7 @@ public class Main {
         switch (loginUser.getRole()){
             case ADMIN -> adminMenu(scanner, deptService, scheduleService);
             case DOCTOR -> doctorMenu(scanner);
-            case PATIENT -> patientMenu(scanner);
+            case PATIENT -> patientMenu(scanner, registerService, loginUser.getUserId());
         }
     }
 
@@ -267,11 +271,108 @@ public class Main {
     }
 
     //患者菜单
-    private static void patientMenu(Scanner sc){
-        System.out.println("\n=====患者菜单=====");
-        System.out.println("1.挂号");
-        System.out.println("2.查询我的挂号");
-        System.out.println("3.退号");
-        System.out.println("0.退出");
+    private static void patientMenu(Scanner sc, RegistrationService registerService, Integer userId){
+        while(true){
+            System.out.println("\n=====患者菜单=====");
+            System.out.println("1.挂号");
+            System.out.println("2.查询我的挂号");
+            System.out.println("3.退号");
+            System.out.println("0.退出");
+            System.out.print("请选择：");
+            int opt = sc.nextInt();
+            switch(opt){
+                case 1 -> registerPage(sc,registerService,userId);
+                case 2 -> queryMyRegister(sc, registerService, userId);
+                case 3 -> cancelRegister(sc, registerService, userId);
+                case 0 -> {return;}
+                default -> System.out.println("无效选项！");
+            }
+        }
+    }
+
+    //挂号页面逻辑：选科室 -> 选医生排班 -> 选号别 ->生成挂号
+    private static void registerPage(Scanner sc, RegistrationService registerService, Integer userId){
+        System.out.println("\n=====挂号流程=====");
+        //1.选择科室
+        List<Dept> deptList = registerService.getEnableDeptList();
+        System.out.println("【科室列表】");
+        //遍历打印科室
+        System.out.print("请选择科室ID：");
+        Integer deptId = sc.nextInt();
+
+        //2.选择该科室在职医生
+        List<Doctor> doctorList = registerService.getWorkDoctorByDeptId(deptId);
+        System.out.println("【该科室医生列表】");
+        //遍历打印医生
+        System.out.print("请选择医生ID：");
+        Integer docId = sc.nextInt();
+
+        //3.查看该医生排班
+        List<Schedule> scheduleList = registerService.getScheduleByDocId(docId);
+        System.out.println("【医生排班列表】");
+        System.out.print("选择就诊日期(yyyy-MM-dd)：");
+        String dateStr = sc.next();
+        Date visitDate = new Date();
+
+        //4.选择号别
+        System.out.println("请选择号别：1急诊 2专家 3普通");
+        int typeOpt = sc.nextInt();
+        Registration.RegType regType = switch (typeOpt){
+            case 1 -> Registration.RegType.EMERGENCY;
+            case 2 -> Registration.RegType.EXPERT;
+            case 3 -> Registration.RegType.NORMAL;
+            default -> null;
+        };
+        if(regType == null){
+            System.out.println("号别选择错误！");
+            return;
+        }
+
+        //5.录入房间号，组装挂号对象
+        System.out.print("输入就诊房间号：");
+        String roomNo = sc.next();
+        Registration reg = new Registration();
+        reg.setUserId(userId);
+        reg.setDeptId(deptId);
+        reg.setDocId(docId);
+        reg.setRoomNo(roomNo);
+        reg.setVisitDate(visitDate);
+        reg.setRegStatus(Registration.RegStatus.WAIT.getCode());
+        reg.setIsPay(0);
+        reg.setRegType(regType);
+
+        Registration resultReg = registerService.createRegister(reg);
+        if(resultReg != null){
+            System.out.println("✅挂号成功！排队号："+resultReg.getQueueNo());
+        }else{
+            System.out.println("❌挂号失败，号源已满或参数错误");
+        }
+    }
+
+    //【功能5新增】查询我的挂号
+    private static void queryMyRegister(Scanner sc, RegistrationService registerService, Integer userId){
+        System.out.println("\n=====我的挂号记录=====");
+        List<Registration> myRegList = registerService.getMyRegistration(userId);
+        if(myRegList == null || myRegList.isEmpty()){
+            System.out.println("暂无挂号记录");
+            return;
+        }
+        for(Registration r : myRegList){
+            System.out.printf("挂号ID:%d | 排队号:%s | 科室ID:%d | 医生ID:%d | 就诊日期:%s | 状态码:%d%n",
+                    r.getRegId(), r.getQueueNo(), r.getDeptId(), r.getDocId(), r.getVisitDate(), r.getRegStatus());
+        }
+    }
+
+    //【功能5新增】退号
+    private static void cancelRegister(Scanner sc, RegistrationService registerService, Integer userId){
+        System.out.println("\n=====退号操作=====");
+        System.out.print("输入要取消的挂号ID：");
+        Integer regId = sc.nextInt();
+        boolean cancelResult = registerService.cancelRegistration(regId, userId);
+        if(cancelResult){
+            System.out.println("✅退号成功！挂号状态改为【已取消】");
+        }else{
+            System.out.println("❌退号失败！仅待就诊记录可以退号");
+        }
     }
 }
