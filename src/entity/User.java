@@ -3,7 +3,6 @@ package entity;
 import java.util.Date;
 
 public class User {
-    //角色枚举，和数据库role字段对应
     public enum Role {
         ADMIN,      //管理员
         DOCTOR,     //医生
@@ -28,7 +27,6 @@ public class User {
         this.role = role;
     }
 
-    // getter & setter
     public Integer getUserId() {
         return userId;
     }

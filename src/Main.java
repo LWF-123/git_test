@@ -29,7 +29,6 @@ public class Main {
         };
         System.out.println("角色：" + roleName);
 
-        // 根据角色进入对应菜单
         switch (loginUser.getRole()){
             case ADMIN -> adminMenu(scanner);
             case DOCTOR -> doctorMenu(scanner);
