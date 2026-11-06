@@ -1,3 +1,9 @@
+-- 创建数据库
+CREATE DATABASE guahaodb;
+
+-- 使用这个数据库
+USE guahaodb;
+
 -- 1.科室表：科室id、科室名、房间id（移除挂号数，改为统计查询）
 CREATE TABLE department (
     dept_id INT PRIMARY KEY AUTO_INCREMENT COMMENT '科室id',
