@@ -112,6 +112,65 @@ public class ScheduleDaoImpl implements ScheduleDao {
                         """, scheduleId);
     }
 
+    @Override
+    public List<ScheduleView> findByDateRange(LocalDate from, LocalDate to, long departmentId) {
+        if (departmentId > 0) {
+            return jdbc.query(SCHEDULE_VIEW
+                            + "WHERE s.work_date BETWEEN ? AND ? AND dep.id = ? "
+                            + "ORDER BY s.work_date, dep.name, s.period, d.name",
+                    ScheduleDaoImpl::mapView, from, to, departmentId);
+        }
+        return jdbc.query(SCHEDULE_VIEW
+                        + "WHERE s.work_date BETWEEN ? AND ? "
+                        + "ORDER BY s.work_date, dep.name, s.period, d.name",
+                ScheduleDaoImpl::mapView, from, to);
+    }
+
+    @Override
+    public Optional<DoctorSchedule> findById(long scheduleId) {
+        return jdbc.queryOne("""
+                        SELECT id, doctor_id, work_date, period, quota_total, quota_used, status
+                        FROM doctor_schedule WHERE id = ?
+                        """,
+                ScheduleDaoImpl::mapSchedule, scheduleId);
+    }
+
+    @Override
+    public Optional<DoctorSchedule> findByDoctorDatePeriod(long doctorId, LocalDate workDate, String period) {
+        return jdbc.queryOne("""
+                        SELECT id, doctor_id, work_date, period, quota_total, quota_used, status
+                        FROM doctor_schedule WHERE doctor_id = ? AND work_date = ? AND period = ?
+                        """,
+                ScheduleDaoImpl::mapSchedule, doctorId, workDate, period);
+    }
+
+    @Override
+    public long insert(long doctorId, LocalDate workDate, String period, int quotaTotal) {
+        return jdbc.insert("""
+                        INSERT INTO doctor_schedule (doctor_id, work_date, period, quota_total, quota_used, status)
+                        VALUES (?, ?, ?, ?, 0, 'OPEN')
+                        """, doctorId, workDate, period, quotaTotal);
+    }
+
+    @Override
+    public int updateQuotaTotal(long scheduleId, int quotaTotal) {
+        return jdbc.update("""
+                        UPDATE doctor_schedule SET quota_total = ?
+                        WHERE id = ? AND quota_used <= ?
+                        """, quotaTotal, scheduleId, quotaTotal);
+    }
+
+    @Override
+    public int addQuotaTotal(long scheduleId, int extra) {
+        return jdbc.update("UPDATE doctor_schedule SET quota_total = quota_total + ? WHERE id = ?",
+                extra, scheduleId);
+    }
+
+    @Override
+    public int updateStatus(long scheduleId, String status) {
+        return jdbc.update("UPDATE doctor_schedule SET status = ? WHERE id = ?", status, scheduleId);
+    }
+
     private static ScheduleView mapView(ResultSet rs) throws SQLException {
         return new ScheduleView(
                 rs.getLong("schedule_id"),

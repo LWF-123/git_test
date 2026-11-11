@@ -81,4 +81,12 @@ public interface RegistrationDao {
      * @return 挂号视图
      */
     Optional<RegistrationView> findView(long registrationId);
+
+    /**
+     * 统计某排班下仍在候诊（WAITING）的人数，停诊前提示用。
+     *
+     * @param scheduleId 排班 id
+     * @return 候诊人数
+     */
+    int countWaitingBySchedule(long scheduleId);
 }

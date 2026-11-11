@@ -7,6 +7,8 @@ import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 /**
  * 控制台输入工具：统一处理空输入、非法数字与密码隐藏。
@@ -35,6 +37,27 @@ public final class InputUtils {
             return line == null ? "0" : line.trim();
         } catch (IOException e) {
             throw new ValidationException("读取输入失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 读取日期（yyyy-MM-dd），直接回车取默认值。
+     *
+     * @param prompt      提示语
+     * @param defaultDate 默认日期
+     * @return 日期
+     */
+    public static LocalDate readDate(String prompt, LocalDate defaultDate) {
+        while (true) {
+            String value = readLine(prompt + "（yyyy-MM-dd，回车=" + defaultDate + "）：");
+            if (value.isBlank() || "0".equals(value)) {
+                return defaultDate;
+            }
+            try {
+                return LocalDate.parse(value);
+            } catch (DateTimeParseException e) {
+                System.out.println("  日期格式应为 yyyy-MM-dd，例如 " + LocalDate.now() + "。");
+            }
         }
     }
 

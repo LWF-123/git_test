@@ -76,4 +76,70 @@ public interface ScheduleDao {
      * @return 1=占用成功，0=号源已满
      */
     int tryIncreaseQuota(Connection connection, long scheduleId);
+
+    /**
+     * 日期区间内的排班（管理员维护用，含已停诊）。
+     *
+     * @param from         起始日期（含）
+     * @param to           结束日期（含）
+     * @param departmentId 科室 id，0 表示全部
+     * @return 排班视图
+     */
+    List<ScheduleView> findByDateRange(LocalDate from, LocalDate to, long departmentId);
+
+    /**
+     * 按 id 查询排班。
+     *
+     * @param scheduleId 排班 id
+     * @return 排班
+     */
+    Optional<DoctorSchedule> findById(long scheduleId);
+
+    /**
+     * 查某医生某天某时段的排班（唯一性校验）。
+     *
+     * @param doctorId 医生 id
+     * @param workDate 日期
+     * @param period   时段
+     * @return 排班
+     */
+    Optional<DoctorSchedule> findByDoctorDatePeriod(long doctorId, LocalDate workDate, String period);
+
+    /**
+     * 新增排班。
+     *
+     * @param doctorId  医生 id
+     * @param workDate  日期
+     * @param period    时段
+     * @param quotaTotal 总号源
+     * @return 新排班 id
+     */
+    long insert(long doctorId, LocalDate workDate, String period, int quotaTotal);
+
+    /**
+     * 修改总号源（仅当新容量不小于已挂号数时才生效）。
+     *
+     * @param scheduleId 排班 id
+     * @param quotaTotal 新总号源
+     * @return 受影响行数
+     */
+    int updateQuotaTotal(long scheduleId, int quotaTotal);
+
+    /**
+     * 加号：总号源增加若干。
+     *
+     * @param scheduleId 排班 id
+     * @param extra      增加数量
+     * @return 受影响行数
+     */
+    int addQuotaTotal(long scheduleId, int extra);
+
+    /**
+     * 修改排班状态。
+     *
+     * @param scheduleId 排班 id
+     * @param status     OPEN / CLOSED
+     * @return 受影响行数
+     */
+    int updateStatus(long scheduleId, String status);
 }

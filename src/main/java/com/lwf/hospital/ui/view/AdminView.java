@@ -10,8 +10,10 @@ import com.lwf.hospital.service.AuthService;
 import com.lwf.hospital.service.DepartmentService;
 import com.lwf.hospital.service.DoctorService;
 import com.lwf.hospital.service.RegistrationService;
+import com.lwf.hospital.service.ScheduleAdminService;
 import com.lwf.hospital.ui.component.Menu;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,7 @@ public class AdminView {
     private static final List<String> DOCTOR_HEADERS = List.of(
             "ID", "工号", "姓名", "职称", "科室", "状态");
     private static final List<String> SCHEDULE_HEADERS = List.of(
-            "ID", "科室", "医生", "职称", "日期", "时段", "已挂/总量", "状态");
+            "ID", "科室", "医生", "职称", "日期", "时段", "已挂/总量", "剩余", "状态");
     private static final List<String> LOCK_HEADERS = List.of(
             "登录名", "姓名", "角色", "失败次数", "状态");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("MM-dd HH:mm");
@@ -37,15 +39,19 @@ public class AdminView {
     private final AuthService authService;
     private final DepartmentService departmentService;
     private final DoctorService doctorService;
+    private final ScheduleAdminService scheduleAdminService;
+    private long currentUserId;
 
     public AdminView(RegistrationService registrationService,
                      AuthService authService,
                      DepartmentService departmentService,
-                     DoctorService doctorService) {
+                     DoctorService doctorService,
+                     ScheduleAdminService scheduleAdminService) {
         this.registrationService = registrationService;
         this.authService = authService;
         this.departmentService = departmentService;
         this.doctorService = doctorService;
+        this.scheduleAdminService = scheduleAdminService;
     }
 
     /**
@@ -54,13 +60,14 @@ public class AdminView {
      * @param user 当前登录用户
      */
     public void show(User user) {
+        this.currentUserId = user.getId();
         Menu menu = new Menu("管理员菜单 · " + user.getRealName());
         menu.add(1, "科室列表", this::printDepartments)
                 .add(2, "号源总览", () -> printSchedules(registrationService.listAvailableSchedules(0)))
                 .add(3, "科室管理（增删改）", this::manageDepartments)
                 .add(4, "医生管理（增改停用）", this::manageDoctors)
                 .add(5, "账号锁定与解锁", this::manageLocks)
-                .add(6, "排班维护（待实现）", () -> System.out.println("  该功能为后续扩展点，见 docs/01-项目说明.md"))
+                .add(6, "排班管理（排班/容量/停诊/加号）", this::manageSchedules)
                 .add(7, "挂号统计报表（待实现）", () -> System.out.println("  该功能为后续扩展点，见 docs/01-项目说明.md"));
         menu.run();
     }
@@ -244,9 +251,115 @@ public class AdminView {
                     schedule.workDate().toString(),
                     schedule.periodText(),
                     schedule.quotaUsed() + "/" + schedule.quotaTotal(),
+                    String.valueOf(schedule.remaining()),
                     schedule.statusText()));
         }
         ConsoleTable.print(SCHEDULE_HEADERS, rows);
+    }
+
+    // ---------------------------------------------------------------- 排班
+
+    private void manageSchedules() {
+        Menu menu = new Menu("排班管理");
+        menu.add(1, "排班总览（按日期区间）", this::viewSchedules)
+                .add(2, "新增排班", this::createSchedule)
+                .add(3, "修改号源容量", this::changeQuota)
+                .add(4, "停诊", this::closeSchedule)
+                .add(5, "恢复开诊", this::openSchedule)
+                .add(6, "加号", this::addQuota);
+        menu.run();
+    }
+
+    private void viewSchedules() {
+        long deptId = InputUtils.readInt("  科室 ID（0 全部）：", 0, Integer.MAX_VALUE);
+        LocalDate from = InputUtils.readDate("  起始日期", LocalDate.now());
+        int days = InputUtils.readInt("  查看天数（1-30）：", 1, 30);
+        printSchedules(scheduleAdminService.list(from, from.plusDays(days - 1L), deptId));
+    }
+
+    private void createSchedule() {
+        List<DoctorView> doctors = doctorService.listAll().stream()
+                .filter(DoctorView::enabled)
+                .toList();
+        printDoctors(doctors);
+        long doctorId = InputUtils.readInt("  医生 ID（0 取消）：", 0, Integer.MAX_VALUE);
+        if (doctorId == 0) {
+            return;
+        }
+        LocalDate workDate = InputUtils.readDate("  出诊日期", LocalDate.now());
+        String period = InputUtils.readLine("  时段（AM/PM 或 上午/下午）：");
+        int quota = InputUtils.readInt("  号源总量（1-200）：", 1, 200);
+        if (!InputUtils.confirm("  确认为该医生新增 " + workDate + " 的排班？")) {
+            System.out.println("  已取消。");
+            return;
+        }
+        long id = scheduleAdminService.create(doctorId, workDate, period, quota);
+        System.out.println("  ✓ 新增排班成功，排班 id = " + id);
+    }
+
+    private void changeQuota() {
+        printSchedules(upcoming());
+        long id = InputUtils.readInt("  选择要修改的排班 ID（0 取消）：", 0, Integer.MAX_VALUE);
+        if (id == 0) {
+            return;
+        }
+        int quota = InputUtils.readInt("  新号源总量（1-200）：", 1, 200);
+        scheduleAdminService.updateQuota(id, quota);
+        System.out.println("  ✓ 已修改排班 " + id + " 的号源总量为 " + quota + "。");
+    }
+
+    private void closeSchedule() {
+        List<ScheduleView> open = upcoming().stream()
+                .filter(schedule -> "OPEN".equalsIgnoreCase(schedule.status()))
+                .toList();
+        printSchedules(open);
+        long id = InputUtils.readInt("  选择要停诊的排班 ID（0 取消）：", 0, Integer.MAX_VALUE);
+        if (id == 0) {
+            return;
+        }
+        if (!InputUtils.confirm("  停诊后该时段将无法再挂号，确认停诊 " + id + "？")) {
+            System.out.println("  已取消。");
+            return;
+        }
+        int waiting = scheduleAdminService.close(id);
+        System.out.println("  ✓ 已停诊排班 " + id + "。");
+        if (waiting > 0) {
+            System.out.println("  ⚠ 该排班下还有 " + waiting + " 位患者待就诊，请告知其改约或退号。");
+        }
+    }
+
+    private void openSchedule() {
+        List<ScheduleView> closed = upcoming().stream()
+                .filter(schedule -> !"OPEN".equalsIgnoreCase(schedule.status()))
+                .toList();
+        printSchedules(closed);
+        long id = InputUtils.readInt("  选择要恢复的排班 ID（0 取消）：", 0, Integer.MAX_VALUE);
+        if (id == 0) {
+            return;
+        }
+        scheduleAdminService.open(id);
+        System.out.println("  ✓ 已恢复开诊排班 " + id + "。");
+    }
+
+    private void addQuota() {
+        printSchedules(upcoming());
+        long id = InputUtils.readInt("  选择要加号的排班 ID（0 取消）：", 0, Integer.MAX_VALUE);
+        if (id == 0) {
+            return;
+        }
+        int extra = InputUtils.readInt("  增加多少个号（1-50）：", 1, 50);
+        scheduleAdminService.addQuota(id, extra, currentUserId);
+        System.out.println("  ✓ 已加号 " + extra + " 个，并写入操作日志。");
+    }
+
+    /**
+     * 今天起 7 天内的排班，供改量 / 停诊 / 加号选择。
+     *
+     * @return 排班视图
+     */
+    private List<ScheduleView> upcoming() {
+        LocalDate today = LocalDate.now();
+        return scheduleAdminService.list(today, today.plusDays(6), 0);
     }
 
     /**

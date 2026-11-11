@@ -103,6 +103,15 @@ public class RegistrationDaoImpl implements RegistrationDao {
         return jdbc.queryOne(REGISTRATION_VIEW + "WHERE r.id = ?", RegistrationDaoImpl::mapView, registrationId);
     }
 
+    @Override
+    public int countWaitingBySchedule(long scheduleId) {
+        return jdbc.queryOne("""
+                        SELECT COUNT(*) AS cnt FROM registration
+                        WHERE schedule_id = ? AND status = 'WAITING'
+                        """,
+                rs -> rs.getInt("cnt"), scheduleId).orElse(0);
+    }
+
     private static RegistrationView mapView(ResultSet rs) throws SQLException {
         return new RegistrationView(
                 rs.getLong("id"),

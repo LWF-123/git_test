@@ -25,7 +25,7 @@ public class ConsoleApp {
         this.patientView = new PatientView(context.registrationService());
         this.doctorView = new DoctorView(context.queueService(), context.scheduleDao());
         this.adminView = new AdminView(context.registrationService(), context.authService(),
-                context.departmentService(), context.doctorService());
+                context.departmentService(), context.doctorService(), context.scheduleAdminService());
     }
 
     /**
