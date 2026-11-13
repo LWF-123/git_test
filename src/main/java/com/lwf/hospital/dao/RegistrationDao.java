@@ -89,4 +89,31 @@ public interface RegistrationDao {
      * @return 候诊人数
      */
     int countWaitingBySchedule(long scheduleId);
+
+    /**
+     * 事务内按 id 锁定挂号单（{@code SELECT ... FOR UPDATE}），退号前复核状态用。
+     *
+     * @param connection     事务连接
+     * @param registrationId 挂号单 id
+     * @return 挂号单
+     */
+    Optional<Registration> lockById(Connection connection, long registrationId);
+
+    /**
+     * 把挂号单置为已取消（仅当当前状态为 WAITING 时才生效，防并发重复退号）。
+     *
+     * @param connection     事务连接
+     * @param registrationId 挂号单 id
+     * @return 1=取消成功，0=状态已变化
+     */
+    int cancel(Connection connection, long registrationId);
+
+    /**
+     * 某患者的挂号记录，可按状态筛选。
+     *
+     * @param patientId 患者 id
+     * @param status    状态筛选，null 表示全部
+     * @return 挂号记录视图
+     */
+    List<RegistrationView> findByPatient(long patientId, TicketStatus status);
 }

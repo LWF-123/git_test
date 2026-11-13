@@ -56,4 +56,22 @@ public interface RegistrationService {
      * @return 挂号记录
      */
     List<RegistrationView> myRegistrations(long patientId);
+
+    /**
+     * 我的挂号记录（按状态筛选）。
+     *
+     * @param patientId 患者 id
+     * @param status    状态，null 表示全部
+     * @return 挂号记录
+     */
+    List<RegistrationView> myRegistrations(long patientId, com.lwf.hospital.domain.enums.TicketStatus status);
+
+    /**
+     * 退号：仅 WAITING 状态可退，回补号源并作废队列票。
+     *
+     * @param patientId      患者 id（校验只能退自己的号）
+     * @param registrationId 挂号单 id
+     * @return 退号后的挂号单视图
+     */
+    RegistrationView cancel(long patientId, long registrationId);
 }

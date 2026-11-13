@@ -142,4 +142,13 @@ public interface ScheduleDao {
      * @return 受影响行数
      */
     int updateStatus(long scheduleId, String status);
+
+    /**
+     * 事务内回补一个号源（退号用），仅在已用数大于 0 时生效，防止超补。
+     *
+     * @param connection 事务连接
+     * @param scheduleId 排班 id
+     * @return 1=回补成功，0=已用数为 0
+     */
+    int decreaseQuotaUsed(Connection connection, long scheduleId);
 }

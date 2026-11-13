@@ -171,6 +171,14 @@ public class ScheduleDaoImpl implements ScheduleDao {
         return jdbc.update("UPDATE doctor_schedule SET status = ? WHERE id = ?", status, scheduleId);
     }
 
+    @Override
+    public int decreaseQuotaUsed(Connection connection, long scheduleId) {
+        return jdbc.update(connection, """
+                        UPDATE doctor_schedule SET quota_used = quota_used - 1
+                        WHERE id = ? AND quota_used > 0
+                        """, scheduleId);
+    }
+
     private static ScheduleView mapView(ResultSet rs) throws SQLException {
         return new ScheduleView(
                 rs.getLong("schedule_id"),

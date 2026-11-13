@@ -47,19 +47,23 @@ public class RegistrationDaoImpl implements RegistrationDao {
                         WHERE patient_id = ? AND schedule_id = ? AND status IN ('WAITING', 'CALLING')
                         LIMIT 1
                         """,
-                rs -> {
-                    Registration registration = new Registration();
-                    registration.setId(rs.getLong("id"));
-                    registration.setPatientId(rs.getLong("patient_id"));
-                    registration.setScheduleId(rs.getLong("schedule_id"));
-                    registration.setType(RegistrationType.fromCode(rs.getString("reg_type")));
-                    registration.setQueueNo(rs.getInt("queue_no"));
-                    registration.setPriority(rs.getInt("priority"));
-                    registration.setFee(rs.getBigDecimal("fee"));
-                    registration.setStatus(TicketStatus.fromCode(rs.getString("status")));
-                    registration.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-                    return registration;
-                }, patientId, scheduleId);
+                RegistrationDaoImpl::mapEntity, patientId, scheduleId);
+    }
+
+    @Override
+    public Optional<Registration> lockById(Connection connection, long registrationId) {
+        return jdbc.queryOne(connection, """
+                        SELECT id, patient_id, schedule_id, reg_type, queue_no, priority, fee, status, created_at
+                        FROM registration WHERE id = ? FOR UPDATE
+                        """,
+                RegistrationDaoImpl::mapEntity, registrationId);
+    }
+
+    @Override
+    public int cancel(Connection connection, long registrationId) {
+        return jdbc.update(connection,
+                "UPDATE registration SET status = 'CANCELLED' WHERE id = ? AND status = 'WAITING'",
+                registrationId);
     }
 
     @Override
@@ -88,6 +92,16 @@ public class RegistrationDaoImpl implements RegistrationDao {
     public List<RegistrationView> findByPatient(long patientId) {
         return jdbc.query(REGISTRATION_VIEW + "WHERE r.patient_id = ? ORDER BY r.created_at DESC",
                 RegistrationDaoImpl::mapView, patientId);
+    }
+
+    @Override
+    public List<RegistrationView> findByPatient(long patientId, TicketStatus status) {
+        if (status == null) {
+            return findByPatient(patientId);
+        }
+        return jdbc.query(REGISTRATION_VIEW
+                        + "WHERE r.patient_id = ? AND r.status = ? ORDER BY r.created_at DESC",
+                RegistrationDaoImpl::mapView, patientId, status.getCode());
     }
 
     @Override
@@ -124,5 +138,19 @@ public class RegistrationDaoImpl implements RegistrationDao {
                 rs.getInt("queue_no"),
                 TicketStatus.fromCode(rs.getString("status")),
                 rs.getBigDecimal("fee"));
+    }
+
+    private static com.lwf.hospital.domain.entity.Registration mapEntity(ResultSet rs) throws SQLException {
+        com.lwf.hospital.domain.entity.Registration registration = new com.lwf.hospital.domain.entity.Registration();
+        registration.setId(rs.getLong("id"));
+        registration.setPatientId(rs.getLong("patient_id"));
+        registration.setScheduleId(rs.getLong("schedule_id"));
+        registration.setType(RegistrationType.fromCode(rs.getString("reg_type")));
+        registration.setQueueNo(rs.getInt("queue_no"));
+        registration.setPriority(rs.getInt("priority"));
+        registration.setFee(rs.getBigDecimal("fee"));
+        registration.setStatus(TicketStatus.fromCode(rs.getString("status")));
+        registration.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        return registration;
     }
 }

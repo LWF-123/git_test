@@ -8,6 +8,7 @@ import com.lwf.hospital.domain.dto.ScheduleView;
 import com.lwf.hospital.domain.entity.Department;
 import com.lwf.hospital.domain.entity.User;
 import com.lwf.hospital.domain.enums.RegistrationType;
+import com.lwf.hospital.domain.enums.TicketStatus;
 import com.lwf.hospital.service.RegistrationService;
 import com.lwf.hospital.ui.component.Menu;
 
@@ -45,7 +46,8 @@ public class PatientView {
         menu.add(1, "科室列表", this::printDepartments)
                 .add(2, "查询号源", this::printAllSchedules)
                 .add(3, "挂    号", () -> register(patientId))
-                .add(4, "我的挂号", () -> printMyRegistrations(patientId));
+                .add(4, "我的挂号（可筛选）", () -> printMyRegistrations(patientId))
+                .add(5, "退    号", () -> cancel(patientId));
         menu.run();
     }
 
@@ -132,7 +134,61 @@ public class PatientView {
     }
 
     private void printMyRegistrations(long patientId) {
-        List<RegistrationView> registrations = registrationService.myRegistrations(patientId);
+        TicketStatus filter = askStatusFilter();
+        List<RegistrationView> registrations = registrationService.myRegistrations(patientId, filter);
+        if (registrations.isEmpty()) {
+            System.out.println("  没有符合条件的挂号记录。");
+            return;
+        }
+        printRegistrations(registrations);
+    }
+
+    /**
+     * 退号：只允许退“候诊”状态的号，退后号源回补、排队号作废。
+     *
+     * @param patientId 患者 id
+     */
+    private void cancel(long patientId) {
+        List<RegistrationView> waiting = registrationService.myRegistrations(patientId, TicketStatus.WAITING);
+        if (waiting.isEmpty()) {
+            System.out.println("  你没有可退的挂号（只有“候诊”状态可以退号）。");
+            return;
+        }
+        printRegistrations(waiting);
+        long registrationId = InputUtils.readInt("  输入要退的挂号单编号（0 取消）：", 0, Integer.MAX_VALUE);
+        if (registrationId == 0) {
+            return;
+        }
+        RegistrationView target = waiting.stream()
+                .filter(item -> item.registrationId() == registrationId)
+                .findFirst()
+                .orElseThrow(() -> new BizException("列表中不存在编号为 " + registrationId + " 的可退挂号。"));
+
+        if (!InputUtils.confirm("  确认退「" + target.deptName() + " / " + target.doctorName()
+                + " / " + target.workDate() + " " + target.periodText() + "」的号？")) {
+            System.out.println("  已取消。");
+            return;
+        }
+
+        RegistrationView cancelled = registrationService.cancel(patientId, registrationId);
+        System.out.println("  ✓ 退号成功：排队号 " + cancelled.queueNo() + " 已作废，号源已回补。");
+        System.out.println("    挂号费 " + cancelled.fee() + " 元已原路退回（模拟）。");
+    }
+
+    private TicketStatus askStatusFilter() {
+        System.out.println("  状态筛选：0 全部  1 候诊  2 叫号中  3 已完成  4 已过号  5 已取消");
+        int choice = InputUtils.readInt("  选择状态（直接回车=0 全部）：", 0, 5);
+        return switch (choice) {
+            case 1 -> TicketStatus.WAITING;
+            case 2 -> TicketStatus.CALLING;
+            case 3 -> TicketStatus.SERVED;
+            case 4 -> TicketStatus.SKIPPED;
+            case 5 -> TicketStatus.CANCELLED;
+            default -> null;
+        };
+    }
+
+    private void printRegistrations(List<RegistrationView> registrations) {
         List<List<String>> rows = new ArrayList<>();
         for (RegistrationView item : registrations) {
             rows.add(List.of(
